@@ -23,16 +23,15 @@ const DTGC_TOKEN_ADDRESS = '0xD0676B28a457371D58d47E5247b439114e40Eb0F';
 /*
     ╔═══════════════════════════════════════════════════════════════╗
     ║                                                               ║
-    ║     🧪 DTGC PREMIUM STAKING PLATFORM V19 - TESTNET 🧪        ║
+    ║     🏆 DTGC PREMIUM STAKING PLATFORM V19 - MAINNET 🏆        ║
     ║                                                               ║
-    ║     ⚠️  FAKE MONEY ONLY - NO REAL VALUE - DEMO MODE  ⚠️      ║
+    ║     ✦ V19 Gold Paper Tokenomics (91% Controlled!)            ║
+    ║     ✦ V3 Contracts Deployed & Live                           ║
+    ║     ✦ Diamond (DTGC/PLS) + Diamond+ (DTGC/URMOM) LP Tiers    ║
+    ║     ✦ 7.5% Total Fees • Sustainable APRs                     ║
+    ║     ✦ Live Prices from DexScreener                           ║
     ║                                                               ║
-    ║     ✦ V19 Gold Paper Tokenomics (Simulated)                  ║
-    ║     ✦ All transactions are LOCAL ONLY                        ║
-    ║     ✦ No real blockchain interaction                         ║
-    ║     ✦ For testing and demonstration purposes                 ║
-    ║                                                               ║
-    ║                    testdtgc.io                                ║
+    ║                    dtgc.io                                    ║
     ╚═══════════════════════════════════════════════════════════════╝
 */
 
@@ -404,7 +403,7 @@ const VIDEOS = {
 const TESTNET_MODE = true; // TESTNET - FAKE MONEY ONLY!
 
 // Password Protection
-const SITE_PASSWORD = '';
+const SITE_PASSWORD = 'GOLD$tack91!';
 const PASSWORD_ENABLED = false; // TESTNET - No password!
 
 // IP Logging Configuration
@@ -2856,7 +2855,7 @@ export default function App() {
 
       // Force layout recalculation
       const forceRepaint = () => {
-        void document.body.offsetHeight; // Trigger reflow
+        document.body.offsetHeight; // Trigger reflow
       };
       requestAnimationFrame(forceRepaint);
     }
@@ -2893,8 +2892,8 @@ export default function App() {
   const [isLP, setIsLP] = useState(false);
   
   // LP Staking Contract Rewards Remaining
-  const [stakingRewardsRemaining, setStakingRewardsRemaining] = useState('25000'); // Testnet fake
-  const [lpStakingRewardsRemaining, setLpStakingRewardsRemaining] = useState('25000'); // Testnet fake
+  const [stakingRewardsRemaining, setStakingRewardsRemaining] = useState('0');
+  const [lpStakingRewardsRemaining, setLpStakingRewardsRemaining] = useState('0');
 
   // Analytics Calculator State
   const [calcInvestment, setCalcInvestment] = useState('1000');
@@ -3238,18 +3237,6 @@ export default function App() {
 
   // Fetch DTGC burns from blockchain
   const fetchDtgcBurns = useCallback(async () => {
-    // TESTNET: Use simulated burn data
-    if (TESTNET_MODE) {
-      setDtgcBurnData(prev => ({
-        ...prev,
-        burned: 22240000, // Simulated 22.24M burned
-        lastUpdated: new Date(),
-        loading: false,
-      }));
-      console.log(`🔥 DTGC Burned (TESTNET): 22.24M`);
-      return;
-    }
-    
     try {
       const rpcProvider = new ethers.JsonRpcProvider('https://rpc.pulsechain.com');
       const dtgcContract = new ethers.Contract(
@@ -3273,9 +3260,10 @@ export default function App() {
       console.log(`🔥 DTGC Burned: ${formatNumber(burnedAmount)} (from ${DTGC_BURN_ADDRESS})`);
     } catch (err) {
       console.error('Failed to fetch DTGC burns:', err);
+      // Set a fallback value if fetch fails
       setDtgcBurnData(prev => ({ 
         ...prev, 
-        burned: prev.burned || 22240000,
+        burned: prev.burned || 22240000, // Fallback to ~22.24M
         loading: false 
       }));
     }
@@ -3762,6 +3750,24 @@ export default function App() {
           setLpDtgcUrmomBalance('0');
         }
 
+        // Get Staking Contract Rewards Remaining (DTGC balance in staking contract)
+        try {
+          const stakingRewards = await dtgcContract.balanceOf(CONTRACT_ADDRESSES.stakingV3);
+          setStakingRewardsRemaining(ethers.formatEther(stakingRewards));
+        } catch (e) {
+          console.warn('Could not fetch staking rewards:', e);
+          setStakingRewardsRemaining('0');
+        }
+
+        // Get LP Staking Contract Rewards Remaining (DTGC balance in LP staking contract)
+        try {
+          const lpStakingRewards = await dtgcContract.balanceOf(CONTRACT_ADDRESSES.lpStakingV3);
+          setLpStakingRewardsRemaining(ethers.formatEther(lpStakingRewards));
+        } catch (e) {
+          console.warn('Could not fetch LP staking rewards:', e);
+          setLpStakingRewardsRemaining('0');
+        }
+
         console.log('📊 Mainnet balances loaded:', {
           pls: ethers.formatEther(plsBal),
           dtgc: ethers.formatEther(dtgcBal),
@@ -4200,10 +4206,13 @@ export default function App() {
           textAlign: 'center',
           boxShadow: '0 20px 60px rgba(212,175,55,0.2)',
         }}>
-          <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🔐</div>
-          <h1 style={{ color: '#D4AF37', fontSize: '1.5rem', marginBottom: '30px', fontWeight: 600, letterSpacing: '2px' }}>
-            Premium Staking on PulseChain
+          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🔐</div>
+          <h1 style={{ color: '#D4AF37', fontSize: '1.8rem', marginBottom: '10px', fontWeight: 800 }}>
+            DT GOLD COIN
           </h1>
+          <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '30px', letterSpacing: '1px' }}>
+            MAINNET PREVIEW • RESTRICTED ACCESS
+          </p>
           <form onSubmit={handlePasswordSubmit}>
             <input
               type="password"
