@@ -3600,6 +3600,9 @@ export default function App() {
         initTestnetBalances();
       }
       
+      // Close wallet modal after testnet connection
+      setShowWalletModal(false);
+      
       showToast('🧪 TESTNET: Wallet connected with 100M PLS!', 'success');
       return;
     }
@@ -4407,7 +4410,53 @@ export default function App() {
     } catch (err) {
       console.error('Emergency withdraw error:', err);
       setLoading(false);
-      showToast(`Emergency withdrawal failed: ${err.message?.slice(0, 50) || 'Unknown error'}`, 'error');
+      
+      // Detect "no position" or "nothing to withdraw" errors - means stale UI data
+      const errorMsg = (err.message || '').toLowerCase();
+      const errorData = (err.data || '').toLowerCase();
+      const isNoPositionError = errorMsg.includes('revert') || 
+                                errorMsg.includes('estimategas') || 
+                                errorMsg.includes('no position') || 
+                                errorMsg.includes('nothing') ||
+                                errorMsg.includes('missing') ||
+                                errorData.includes('revert') ||
+                                err.code === 'CALL_EXCEPTION' ||
+                                err.code === 'UNPREDICTABLE_GAS_LIMIT';
+      
+      if (isNoPositionError) {
+        showToast('⚠️ No active stake found on V3 contract. Clearing stale UI data...', 'info');
+        setStakedPositions([]);
+        setTimeout(() => {
+          showToast('✅ Stale data cleared. Your stake may have been on V2 contracts.', 'success');
+        }, 1500);
+      } else {
+        showToast(`Emergency withdrawal failed: ${err.message?.slice(0, 50) || 'Unknown error'}`, 'error');
+      }
+    }
+  };
+
+  // Force clear ALL stale stake data (for V2 -> V3 migration issues)
+  const forceClearStaleData = () => {
+    console.log('🧹 Force clearing all stale stake data...');
+    setStakedPositions([]);
+    localStorage.removeItem('dtgc-testnet-balances');
+    localStorage.removeItem('dtgc-stake-history');
+    
+    // Also clear testnet positions if in testnet mode
+    if (TESTNET_MODE) {
+      setTestnetBalances(prev => ({
+        ...prev,
+        positions: [],
+        stakedDTGC: 0,
+        stakedLP: 0,
+      }));
+    }
+    
+    showToast('✅ All stale stake data cleared!', 'success');
+    
+    // Re-fetch from blockchain after a delay
+    if (!TESTNET_MODE && account && provider) {
+      setTimeout(() => fetchStakedPosition(), 1500);
     }
   };
 
@@ -4526,6 +4575,8 @@ export default function App() {
   // Fetch staked positions when account connects
   useEffect(() => {
     if (!TESTNET_MODE && account && provider) {
+      // Clear any stale positions first, then fetch fresh from blockchain
+      setStakedPositions([]);
       fetchStakedPosition();
       // Refresh every 60 seconds
       const interval = setInterval(fetchStakedPosition, 60000);
@@ -5049,6 +5100,33 @@ export default function App() {
                       ✅ Claim All
                     </button>
                   )}
+                  
+                  {/* Clear Ghost Position Button (for V2 migration issues) */}
+                  <button
+                    onClick={() => {
+                      if (confirm('Clear this position from UI? Use this if you get errors trying to unstake (ghost V2 data).')) {
+                        setStakedPositions([]);
+                        if (TESTNET_MODE) {
+                          setTestnetBalances(prev => ({ ...prev, positions: [] }));
+                        }
+                        showToast('🧹 Ghost position cleared from UI', 'success');
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      marginTop: '6px',
+                      padding: '6px 12px',
+                      background: 'transparent',
+                      border: '1px dashed rgba(255,255,255,0.2)',
+                      borderRadius: '8px',
+                      fontWeight: 500,
+                      fontSize: '0.6rem',
+                      color: 'rgba(255,255,255,0.5)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🧹 Clear Ghost (V2 Data)
+                  </button>
                 </>
               );
             })()}
@@ -6296,7 +6374,7 @@ export default function App() {
                             <div style={{fontSize: '0.75rem', color: '#4CAF50', opacity: 0.9}}>
                               ≈ {getCurrencySymbol()}{formatNumber(convertToCurrency(rewardValue).value)}
                             </div>
-                            <div style={{display: 'flex', gap: '8px', marginTop: '10px', justifyContent: 'flex-end'}}>
+                            <div style={{display: 'flex', gap: '8px', marginTop: '10px', justifyContent: 'flex-end', flexWrap: 'wrap'}}>
                               {isLocked ? (
                                 <button
                                   onClick={() => handleEmergencyWithdraw(pos.isLP)}
@@ -6347,6 +6425,27 @@ export default function App() {
                                   </button>
                                 </>
                               )}
+                              {/* Ghost Clear Button */}
+                              <button
+                                onClick={() => {
+                                  if (confirm('Clear this position from UI? Use if you get errors (ghost V2 data).')) {
+                                    setStakedPositions(prev => prev.filter(p => p.id !== pos.id));
+                                    showToast('🧹 Position cleared from UI', 'success');
+                                  }
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: 'transparent',
+                                  border: '1px dashed rgba(255,255,255,0.3)',
+                                  borderRadius: '20px',
+                                  fontWeight: 500,
+                                  fontSize: '0.6rem',
+                                  color: 'rgba(255,255,255,0.5)',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                🧹 Clear Ghost
+                              </button>
                             </div>
                           </div>
                         </div>
