@@ -2391,6 +2391,64 @@ const getStyles = (isDark) => `
     margin-bottom: 24px;
     letter-spacing: 1px;
   }
+
+  /* Mobile Wallet Modal Styles */
+  .wallet-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(8px);
+  }
+
+  .wallet-modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0d0d1a 100%);
+    border: 2px solid #D4AF37;
+    border-radius: 20px;
+    padding: 32px;
+    max-width: 420px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(212,175,55,0.2);
+  }
+
+  .wallet-modal-title {
+    color: #D4AF37;
+    font-family: 'Cinzel', serif;
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: 24px;
+    letter-spacing: 2px;
+  }
+
+  @media (max-width: 768px) {
+    .wallet-modal-overlay {
+      align-items: flex-start;
+      padding-top: 40px;
+    }
+    .wallet-modal-content {
+      max-width: 300px;
+      width: 85%;
+      padding: 20px;
+      border-radius: 16px;
+      max-height: 60vh;
+    }
+    .wallet-modal-title {
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+    }
+    .wallet-option-btn {
+      padding: 12px 16px !important;
+      font-size: 0.85rem !important;
+    }
+  }
 `;
 
 // ═══════════════════════════════════════════════════════════════
@@ -3034,6 +3092,10 @@ export default function App() {
     SAR: 3.75,    // Saudi Riyal
     CNY: 7.24,    // Chinese Yuan
     CZK: 23.50,   // Czech Koruna
+    AUD: 1.55,    // Australian Dollar
+    NGN: 1550,    // Nigerian Naira
+    COP: 4100,    // Colombian Peso
+    CAD: 1.36,    // Canadian Dollar
   };
 
   // Metal prices state (per troy ounce in USD)
@@ -3944,6 +4006,14 @@ export default function App() {
         return `¥${(valueUsd * CURRENCY_RATES.CNY).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       case 'czk':
         return `Kč${(valueUsd * CURRENCY_RATES.CZK).toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      case 'aud':
+        return `A$${(valueUsd * CURRENCY_RATES.AUD).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      case 'ngn':
+        return `₦${(valueUsd * CURRENCY_RATES.NGN).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+      case 'cop':
+        return `$${(valueUsd * CURRENCY_RATES.COP).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+      case 'cad':
+        return `C$${(valueUsd * CURRENCY_RATES.CAD).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       default:
         return `${formatNumber(numBalance)} ${tokenType.toUpperCase()}`;
     }
@@ -3959,6 +4029,10 @@ export default function App() {
       case 'sar': return { value: valueUsd * CURRENCY_RATES.SAR, symbol: '﷼', code: 'SAR' };
       case 'cny': return { value: valueUsd * CURRENCY_RATES.CNY, symbol: '¥', code: 'CNY' };
       case 'czk': return { value: valueUsd * CURRENCY_RATES.CZK, symbol: 'Kč', code: 'CZK' };
+      case 'aud': return { value: valueUsd * CURRENCY_RATES.AUD, symbol: 'A$', code: 'AUD' };
+      case 'ngn': return { value: valueUsd * CURRENCY_RATES.NGN, symbol: '₦', code: 'NGN' };
+      case 'cop': return { value: valueUsd * CURRENCY_RATES.COP, symbol: '$', code: 'COP' };
+      case 'cad': return { value: valueUsd * CURRENCY_RATES.CAD, symbol: 'C$', code: 'CAD' };
       default: return { value: valueUsd, symbol: '$', code: 'USD' };
     }
   };
@@ -3972,6 +4046,10 @@ export default function App() {
       case 'sar': return value / CURRENCY_RATES.SAR;
       case 'cny': return value / CURRENCY_RATES.CNY;
       case 'czk': return value / CURRENCY_RATES.CZK;
+      case 'aud': return value / CURRENCY_RATES.AUD;
+      case 'ngn': return value / CURRENCY_RATES.NGN;
+      case 'cop': return value / CURRENCY_RATES.COP;
+      case 'cad': return value / CURRENCY_RATES.CAD;
       default: return value;
     }
   };
@@ -3986,13 +4064,17 @@ export default function App() {
       case 'sar': return '﷼';
       case 'cny': return '¥';
       case 'czk': return 'Kč';
+      case 'aud': return 'A$';
+      case 'ngn': return '₦';
+      case 'cop': return '$';
+      case 'cad': return 'C$';
       default: return '$';
     }
   };
 
   // Toggle currency display
   const toggleCurrencyDisplay = () => {
-    const currencies = ['units', 'usd', 'eur', 'gbp', 'jpy', 'sar', 'cny', 'czk'];
+    const currencies = ['units', 'usd', 'eur', 'gbp', 'jpy', 'sar', 'cny', 'czk', 'aud', 'ngn', 'cop', 'cad'];
     const currentIndex = currencies.indexOf(displayCurrency);
     const nextCurrency = currencies[(currentIndex + 1) % currencies.length];
     setDisplayCurrency(nextCurrency);
@@ -8105,39 +8187,9 @@ export default function App() {
 
       {/* Wallet Selector Modal */}
       {showWalletModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.85)',
-          display: 'flex',
-          alignItems: window.innerWidth < 768 ? 'flex-start' : 'center',
-          justifyContent: 'center',
-          paddingTop: window.innerWidth < 768 ? '60px' : '0',
-          zIndex: 10000,
-          backdropFilter: 'blur(8px)',
-        }} onClick={() => setShowWalletModal(false)}>
-          <div style={{
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #0d0d1a 100%)',
-            border: '2px solid #D4AF37',
-            borderRadius: window.innerWidth < 768 ? '16px' : '20px',
-            padding: window.innerWidth < 768 ? '20px' : '32px',
-            maxWidth: window.innerWidth < 768 ? '320px' : '420px',
-            width: window.innerWidth < 768 ? '85%' : '90%',
-            maxHeight: window.innerWidth < 768 ? '70vh' : '85vh',
-            overflowY: 'auto',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(212,175,55,0.2)',
-          }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{
-              color: '#D4AF37',
-              fontFamily: 'Cinzel, serif',
-              fontSize: window.innerWidth < 768 ? '1.2rem' : '1.5rem',
-              textAlign: 'center',
-              marginBottom: window.innerWidth < 768 ? '16px' : '24px',
-              letterSpacing: '2px',
-            }}>
+        <div className="wallet-modal-overlay" onClick={() => setShowWalletModal(false)}>
+          <div className="wallet-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2 className="wallet-modal-title">
               {walletStep === 'accounts' ? 'Select Account' : 'Select Wallet'}
             </h2>
 
@@ -8152,6 +8204,7 @@ export default function App() {
                     key={addr}
                     onClick={() => selectAccount(addr)}
                     disabled={loading}
+                    className="wallet-option-btn"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
