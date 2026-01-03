@@ -2428,6 +2428,24 @@ const getStyles = (isDark) => `
     letter-spacing: 2px;
   }
 
+  /* Testnet Banner Styles */
+  .testnet-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2000;
+    background: linear-gradient(90deg, #FF6B6B, #FF8E53, #FF6B6B);
+    background-size: 200% auto;
+    animation: shimmer 3s linear infinite;
+    padding: 8px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
   @media (max-width: 768px) {
     .wallet-modal-overlay {
       align-items: flex-start;
@@ -2447,6 +2465,19 @@ const getStyles = (isDark) => `
     .wallet-option-btn {
       padding: 12px 16px !important;
       font-size: 0.85rem !important;
+    }
+    .testnet-banner {
+      right: auto;
+      max-width: 140px;
+      padding: 6px 10px;
+      border-radius: 0 0 10px 0;
+      gap: 6px;
+    }
+    .testnet-banner span {
+      font-size: 0.6rem !important;
+    }
+    .testnet-banner button {
+      display: none;
     }
   }
 `;
@@ -4896,24 +4927,9 @@ export default function App() {
       <div className="app-container">
         {/* TESTNET BANNER */}
         {TESTNET_MODE && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 2000,
-            background: 'linear-gradient(90deg, #FF6B6B, #FF8E53, #FF6B6B)',
-            backgroundSize: '200% auto',
-            animation: 'shimmer 3s linear infinite',
-            padding: '8px 20px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '20px',
-            flexWrap: 'wrap',
-          }}>
+          <div className="testnet-banner">
             <span style={{fontWeight: 700, color: '#FFF', fontSize: '0.85rem', letterSpacing: '1px'}}>
-              🧪 TESTNET MODE - Not Real Money!
+              🧪 TESTNET
             </span>
             {account && (
               <>
@@ -4930,7 +4946,7 @@ export default function App() {
                     cursor: 'pointer',
                   }}
                 >
-                  🚰 Get More Test Tokens
+                  🚰 Get Tokens
                 </button>
                 <button
                   onClick={resetTestnet}
@@ -5444,7 +5460,18 @@ export default function App() {
                   transition: 'all 0.3s ease',
                 }}
               >
-                {displayCurrency === 'units' ? '💰 UNITS' : displayCurrency === 'usd' ? '💵 USD' : displayCurrency === 'eur' ? '💶 EUR' : displayCurrency === 'gbp' ? '💷 GBP' : displayCurrency === 'jpy' ? '💴 JPY' : displayCurrency === 'sar' ? '🇸🇦 SAR' : displayCurrency === 'cny' ? '🇨🇳 CNY' : '🇨🇿 CZK'} ▼
+                {displayCurrency === 'units' ? '💰 UNITS' : 
+                 displayCurrency === 'usd' ? '💵 USD' : 
+                 displayCurrency === 'eur' ? '💶 EUR' : 
+                 displayCurrency === 'gbp' ? '💷 GBP' : 
+                 displayCurrency === 'jpy' ? '💴 JPY' : 
+                 displayCurrency === 'sar' ? '🇸🇦 SAR' : 
+                 displayCurrency === 'cny' ? '🇨🇳 CNY' : 
+                 displayCurrency === 'czk' ? '🇨🇿 CZK' :
+                 displayCurrency === 'aud' ? '🇦🇺 AUD' :
+                 displayCurrency === 'ngn' ? '🇳🇬 NGN' :
+                 displayCurrency === 'cop' ? '🇨🇴 COP' :
+                 displayCurrency === 'cad' ? '🇨🇦 CAD' : '💰 UNITS'} ▼
               </button>
 
               <div style={{
