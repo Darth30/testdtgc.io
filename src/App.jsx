@@ -455,7 +455,8 @@ const TESTNET_CONFIG = {
   startingPLS: 100000000,      // 100M PLS
   startingDTGC: 50000000,      // 50M DTGC  
   startingURMOM: 25000000,     // 25M URMOM
-  startingLP: 1000000,         // 1M LP tokens
+  startingLpDtgcPls: 3000000,  // 3M DTGC/PLS LP (Diamond - Blue)
+  startingLpDtgcUrmom: 3000000, // 3M DTGC/URMOM LP (Diamond+ - Purple)
   simulatedAPR: true,          // Show simulated rewards
   faucetCooldown: 0,           // No cooldown for testing
 };
@@ -3062,7 +3063,25 @@ export default function App() {
   const [testnetBalances, setTestnetBalances] = useState(() => {
     if (TESTNET_MODE && typeof window !== 'undefined') {
       const saved = localStorage.getItem('dtgc-testnet-balances');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Migrate old format to new format (add LP fields if missing)
+        if (parsed.lpDtgcPls === undefined || parsed.lpDtgcUrmom === undefined) {
+          const migrated = {
+            ...parsed,
+            lpDtgcPls: parsed.lp || TESTNET_CONFIG.startingLpDtgcPls,
+            lpDtgcUrmom: TESTNET_CONFIG.startingLpDtgcUrmom,
+            stakedLpDtgcPls: parsed.stakedLP || 0,
+            stakedLpDtgcUrmom: 0,
+          };
+          // Remove old fields
+          delete migrated.lp;
+          delete migrated.stakedLP;
+          localStorage.setItem('dtgc-testnet-balances', JSON.stringify(migrated));
+          return migrated;
+        }
+        return parsed;
+      }
     }
     return null;
   });
@@ -3582,9 +3601,11 @@ export default function App() {
       pls: TESTNET_CONFIG.startingPLS,
       dtgc: TESTNET_CONFIG.startingDTGC,
       urmom: TESTNET_CONFIG.startingURMOM,
-      lp: TESTNET_CONFIG.startingLP,
+      lpDtgcPls: TESTNET_CONFIG.startingLpDtgcPls,
+      lpDtgcUrmom: TESTNET_CONFIG.startingLpDtgcUrmom,
       stakedDTGC: 0,
-      stakedLP: 0,
+      stakedLpDtgcPls: 0,
+      stakedLpDtgcUrmom: 0,
       rewards: 0,
       positions: [],
     };
@@ -3595,10 +3616,18 @@ export default function App() {
     setPlsBalance(balances.pls.toString());
     setDtgcBalance(balances.dtgc.toString());
     setUrmomBalance(balances.urmom.toString());
-    setLpBalance(balances.lp.toString());
+    setLpDtgcPlsBalance(balances.lpDtgcPls.toString());
+    setLpDtgcUrmomBalance(balances.lpDtgcUrmom.toString());
     
     return balances;
   }, []);
+
+  // Auto-initialize testnet balances on mount if not already set
+  useEffect(() => {
+    if (TESTNET_MODE && !testnetBalances) {
+      initTestnetBalances();
+    }
+  }, [initTestnetBalances, testnetBalances]);
 
   // Update balances from testnet state
   useEffect(() => {
@@ -3606,7 +3635,8 @@ export default function App() {
       setPlsBalance((testnetBalances.pls ?? 0).toString());
       setDtgcBalance((testnetBalances.dtgc ?? 0).toString());
       setUrmomBalance((testnetBalances.urmom ?? 0).toString());
-      setLpBalance((testnetBalances.lp ?? 0).toString());
+      setLpDtgcPlsBalance((testnetBalances.lpDtgcPls ?? 0).toString());
+      setLpDtgcUrmomBalance((testnetBalances.lpDtgcUrmom ?? 0).toString());
       setStakedPositions(testnetBalances.positions || []);
     }
   }, [testnetBalances]);
@@ -3620,12 +3650,13 @@ export default function App() {
       pls: (testnetBalances?.pls || 0) + TESTNET_CONFIG.startingPLS,
       dtgc: (testnetBalances?.dtgc || 0) + TESTNET_CONFIG.startingDTGC,
       urmom: (testnetBalances?.urmom || 0) + TESTNET_CONFIG.startingURMOM,
-      lp: (testnetBalances?.lp || 0) + TESTNET_CONFIG.startingLP,
+      lpDtgcPls: (testnetBalances?.lpDtgcPls || 0) + TESTNET_CONFIG.startingLpDtgcPls,
+      lpDtgcUrmom: (testnetBalances?.lpDtgcUrmom || 0) + TESTNET_CONFIG.startingLpDtgcUrmom,
     };
     
     setTestnetBalances(newBalances);
     localStorage.setItem('dtgc-testnet-balances', JSON.stringify(newBalances));
-    showToast(`🎉 Received ${formatNumber(TESTNET_CONFIG.startingPLS)} PLS + ${formatNumber(TESTNET_CONFIG.startingDTGC)} DTGC + ${formatNumber(TESTNET_CONFIG.startingLP)} LP!`, 'success');
+    showToast(`🎉 Received ${formatNumber(TESTNET_CONFIG.startingDTGC)} DTGC + ${formatNumber(TESTNET_CONFIG.startingLpDtgcPls)} 💎 LP + ${formatNumber(TESTNET_CONFIG.startingLpDtgcUrmom)} 💜💎 LP!`, 'success');
   }, [testnetBalances]);
 
   // Reset testnet
@@ -3633,7 +3664,7 @@ export default function App() {
     if (!TESTNET_MODE) return;
     localStorage.removeItem('dtgc-testnet-balances');
     initTestnetBalances();
-    showToast('🔄 Testnet reset! Fresh 100M PLS added.', 'info');
+    showToast('🔄 Testnet reset! Fresh balances + 3M 💎 LP + 3M 💜💎 LP!', 'info');
   }, [initTestnetBalances]);
 
   // V19 Migration: Fix old stakes with incorrect APRs and lock periods
@@ -3698,14 +3729,20 @@ export default function App() {
       setAccount(testAddress);
       
       // Initialize or load testnet balances
-      if (!testnetBalances) {
+      // Check if balances exist AND have the new LP fields
+      if (testnetBalances && testnetBalances.lpDtgcPls !== undefined && testnetBalances.lpDtgcUrmom !== undefined) {
+        // Balances exist with correct format, sync display
+        setLpDtgcPlsBalance((testnetBalances.lpDtgcPls ?? 0).toString());
+        setLpDtgcUrmomBalance((testnetBalances.lpDtgcUrmom ?? 0).toString());
+      } else {
+        // Initialize fresh balances
         initTestnetBalances();
       }
       
       // Close wallet modal after testnet connection
       setShowWalletModal(false);
       
-      showToast('🧪 TESTNET: Wallet connected with 100M PLS!', 'success');
+      showToast('🧪 TESTNET: Wallet connected with 3M 💎 LP + 3M 💜💎 LP!', 'success');
       return;
     }
 
@@ -4258,6 +4295,7 @@ export default function App() {
         tier: tierData.name,
         amount: stakedAmount,
         isLP: isLP,
+        lpType: selectedTier === 4 ? 1 : 0, // 0 = Diamond (PLS), 1 = Diamond+ (URMOM)
         apr: tierData.apr,
         lockDays: tierData.lockDays,
         startTime: Date.now(),
@@ -4265,13 +4303,16 @@ export default function App() {
         rewards: 0,
       };
       
-      // Update balances
+      // Update balances - use correct LP type
+      const isDiamondPlus = selectedTier === 4;
       const newBalances = {
         ...testnetBalances,
         dtgc: isLP ? testnetBalances.dtgc : testnetBalances.dtgc - amount,
-        lp: isLP ? testnetBalances.lp - amount : testnetBalances.lp,
-        stakedDTGC: isLP ? testnetBalances.stakedDTGC : testnetBalances.stakedDTGC + stakedAmount,
-        stakedLP: isLP ? testnetBalances.stakedLP + stakedAmount : testnetBalances.stakedLP,
+        lpDtgcPls: (isLP && !isDiamondPlus) ? (testnetBalances.lpDtgcPls || 0) - amount : (testnetBalances.lpDtgcPls || 0),
+        lpDtgcUrmom: (isLP && isDiamondPlus) ? (testnetBalances.lpDtgcUrmom || 0) - amount : (testnetBalances.lpDtgcUrmom || 0),
+        stakedDTGC: isLP ? (testnetBalances.stakedDTGC || 0) : (testnetBalances.stakedDTGC || 0) + stakedAmount,
+        stakedLpDtgcPls: (isLP && !isDiamondPlus) ? (testnetBalances.stakedLpDtgcPls || 0) + stakedAmount : (testnetBalances.stakedLpDtgcPls || 0),
+        stakedLpDtgcUrmom: (isLP && isDiamondPlus) ? (testnetBalances.stakedLpDtgcUrmom || 0) + stakedAmount : (testnetBalances.stakedLpDtgcUrmom || 0),
         positions: [...(testnetBalances.positions || []), newPosition],
       };
       
@@ -4414,12 +4455,16 @@ export default function App() {
       localStorage.setItem('dtgc-stake-history', JSON.stringify(existingHistory.slice(0, 50)));
       setStakeHistory(existingHistory.slice(0, 50));
 
+      // Determine LP type (Diamond = 0, Diamond+ = 1)
+      const isDiamondPlus = position.lpType === 1 || position.tier?.toUpperCase() === 'DIAMOND+';
       const newBalances = {
         ...testnetBalances,
-        dtgc: position.isLP ? testnetBalances.dtgc + rewards : testnetBalances.dtgc + returnAmount + rewards,
-        lp: position.isLP ? testnetBalances.lp + returnAmount : testnetBalances.lp,
-        stakedDTGC: position.isLP ? testnetBalances.stakedDTGC : testnetBalances.stakedDTGC - position.amount,
-        stakedLP: position.isLP ? testnetBalances.stakedLP - position.amount : testnetBalances.stakedLP,
+        dtgc: position.isLP ? (testnetBalances.dtgc || 0) + rewards : (testnetBalances.dtgc || 0) + returnAmount + rewards,
+        lpDtgcPls: (position.isLP && !isDiamondPlus) ? (testnetBalances.lpDtgcPls || 0) + returnAmount : (testnetBalances.lpDtgcPls || 0),
+        lpDtgcUrmom: (position.isLP && isDiamondPlus) ? (testnetBalances.lpDtgcUrmom || 0) + returnAmount : (testnetBalances.lpDtgcUrmom || 0),
+        stakedDTGC: position.isLP ? (testnetBalances.stakedDTGC || 0) : (testnetBalances.stakedDTGC || 0) - position.amount,
+        stakedLpDtgcPls: (position.isLP && !isDiamondPlus) ? (testnetBalances.stakedLpDtgcPls || 0) - position.amount : (testnetBalances.stakedLpDtgcPls || 0),
+        stakedLpDtgcUrmom: (position.isLP && isDiamondPlus) ? (testnetBalances.stakedLpDtgcUrmom || 0) - position.amount : (testnetBalances.stakedLpDtgcUrmom || 0),
         positions: testnetBalances.positions.filter(p => p.id !== positionId),
       };
 
@@ -5602,6 +5647,10 @@ export default function App() {
               <option value="sar">🇸🇦 SAR (﷼)</option>
               <option value="cny">🇨🇳 CNY (¥)</option>
               <option value="czk">🇨🇿 CZK (Kč)</option>
+              <option value="aud">🇦🇺 AUD (A$)</option>
+              <option value="ngn">🇳🇬 NGN (₦)</option>
+              <option value="cop">🇨🇴 COP ($)</option>
+              <option value="cad">🇨🇦 CAD (C$)</option>
             </select>
           </div>
         </section>
