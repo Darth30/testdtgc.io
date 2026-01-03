@@ -5186,7 +5186,7 @@ export default function App() {
                   {/* Clear Ghost Position Button (for V2 migration issues) */}
                   <button
                     onClick={() => {
-                      if (confirm('Clear this position from UI? Use this if you get errors trying to unstake (ghost V2 data).')) {
+                      if (window.confirm('Clear this position from UI? Use this if you get errors trying to unstake (ghost V2 data).')) {
                         setStakedPositions([]);
                         if (TESTNET_MODE) {
                           setTestnetBalances(prev => ({ ...prev, positions: [] }));
@@ -6510,7 +6510,7 @@ export default function App() {
                               {/* Ghost Clear Button */}
                               <button
                                 onClick={() => {
-                                  if (confirm('Clear this position from UI? Use if you get errors (ghost V2 data).')) {
+                                  if (window.confirm('Clear this position from UI? Use if you get errors (ghost V2 data).')) {
                                     setStakedPositions(prev => prev.filter(p => p.id !== pos.id));
                                     showToast('🧹 Position cleared from UI', 'success');
                                   }
@@ -8149,7 +8149,7 @@ export default function App() {
               {stakeHistory.length > 0 && (
                 <button
                   onClick={() => {
-                    if (confirm('Clear all stake history? This cannot be undone.')) {
+                    if (window.confirm('Clear all stake history? This cannot be undone.')) {
                       localStorage.removeItem('dtgc-stake-history');
                       setStakeHistory([]);
                       showToast('Stake history cleared', 'success');
