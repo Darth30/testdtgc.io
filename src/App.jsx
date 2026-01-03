@@ -5564,16 +5564,40 @@ export default function App() {
                   <div style={{fontSize: '1.3rem', fontWeight: 800, color: '#FF9800'}}>{formatNumber(parseFloat(urmomBalance))} URMOM</div>
                   <div style={{fontSize: '0.7rem', color: '#4CAF50'}}>{getCurrencySymbol()}{formatNumber(convertToCurrency(parseFloat(urmomBalance) * (livePrices.urmom || 0)).value)}</div>
                 </div>
-                <div style={{textAlign: 'center', padding: '10px 15px', background: 'rgba(0,188,212,0.1)', borderRadius: '8px', border: '1px solid rgba(0,188,212,0.3)'}}>
+                {/* Blue Diamond LP (DTGC/PLS) */}
+                <div style={{textAlign: 'center', padding: '10px 15px', background: 'rgba(0,188,212,0.15)', borderRadius: '8px', border: '2px solid #00BCD4'}}>
                   <div style={{fontSize: '1.1rem', fontWeight: 800, color: '#00BCD4'}}>{formatNumber(parseFloat(lpDtgcPlsBalance))} 💎</div>
-                  <div style={{fontSize: '0.65rem', color: '#00BCD4'}}>DTGC/PLS LP</div>
+                  <div style={{fontSize: '0.65rem', color: '#00BCD4', fontWeight: 600}}>DTGC/PLS LP</div>
                   <div style={{fontSize: '0.6rem', color: '#4CAF50'}}>{getCurrencySymbol()}{formatNumber(convertToCurrency(parseFloat(lpDtgcPlsBalance) * (livePrices.dtgc || 0) * 2).value)}</div>
                 </div>
-                <div style={{textAlign: 'center', padding: '10px 15px', background: 'rgba(156,39,176,0.1)', borderRadius: '8px', border: '1px solid rgba(156,39,176,0.3)'}}>
+                {/* Purple Diamond+ LP (DTGC/URMOM) */}
+                <div style={{textAlign: 'center', padding: '10px 15px', background: 'rgba(156,39,176,0.15)', borderRadius: '8px', border: '2px solid #9C27B0'}}>
                   <div style={{fontSize: '1.1rem', fontWeight: 800, color: '#9C27B0'}}>{formatNumber(parseFloat(lpDtgcUrmomBalance))} 💜💎</div>
-                  <div style={{fontSize: '0.65rem', color: '#9C27B0'}}>DTGC/URMOM LP</div>
+                  <div style={{fontSize: '0.65rem', color: '#9C27B0', fontWeight: 600}}>DTGC/URMOM LP</div>
                   <div style={{fontSize: '0.6rem', color: '#4CAF50'}}>{getCurrencySymbol()}{formatNumber(convertToCurrency(parseFloat(lpDtgcUrmomBalance) * (livePrices.dtgc || 0) * 2).value)}</div>
                 </div>
+                {/* Green Pending Rewards */}
+                {(() => {
+                  // Calculate total pending rewards from all staked positions
+                  const totalPendingRewards = stakedPositions.reduce((total, pos) => {
+                    const now = Date.now();
+                    const daysStaked = Math.max(0, (now - pos.startTime) / (24 * 60 * 60 * 1000));
+                    // Use V19 corrected APRs
+                    const V19_APRS = { 'SILVER': 15.4, 'GOLD': 16.8, 'WHALE': 18.2, 'DIAMOND': 42, 'DIAMOND+': 70 };
+                    const tierName = pos.tier?.toUpperCase() || (pos.isLP ? (pos.lpType === 1 ? 'DIAMOND+' : 'DIAMOND') : 'GOLD');
+                    const apr = V19_APRS[tierName] || 16.8;
+                    const rewards = (pos.amount * (apr / 100) / 365) * daysStaked;
+                    return total + rewards;
+                  }, 0);
+                  const rewardsValueUsd = totalPendingRewards * (livePrices.dtgc || 0);
+                  return (
+                    <div style={{textAlign: 'center', padding: '10px 15px', background: 'rgba(76,175,80,0.15)', borderRadius: '8px', border: '2px solid #4CAF50'}}>
+                      <div style={{fontSize: '1.1rem', fontWeight: 800, color: '#4CAF50'}}>+{formatNumber(totalPendingRewards)} 🎁</div>
+                      <div style={{fontSize: '0.65rem', color: '#4CAF50', fontWeight: 600}}>PENDING REWARDS</div>
+                      <div style={{fontSize: '0.6rem', color: '#4CAF50'}}>{getCurrencySymbol()}{formatNumber(convertToCurrency(rewardsValueUsd).value)}</div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
