@@ -4363,6 +4363,40 @@ export default function App() {
       return;
     }
 
+    // Check balance before proceeding
+    const walletBalance = isLP 
+      ? (selectedTier === 4 ? parseFloat(lpDtgcUrmomBalance) : parseFloat(lpDtgcPlsBalance))
+      : parseFloat(dtgcBalance);
+    
+    if (walletBalance <= 0) {
+      showToast(`❌ You have no ${isLP ? (selectedTier === 4 ? 'DTGC/URMOM LP' : 'DTGC/PLS LP') : 'DTGC'} tokens to stake!`, 'error');
+      return;
+    }
+    
+    if (amount > walletBalance) {
+      showToast(`❌ Insufficient balance! You have ${formatNumber(walletBalance)} ${isLP ? 'LP' : 'DTGC'}`, 'error');
+      return;
+    }
+
+    // Check if user already has an active LP stake (contract may only allow 1)
+    if (isLP) {
+      const existingLpStake = stakedPositions.find(p => p.isLP);
+      if (existingLpStake) {
+        showToast(`⚠️ You already have an active LP stake (${formatNumber(existingLpStake.amount)} LP). Unstake first or wait for lock to expire.`, 'warning');
+        console.warn('🚫 User already has LP stake:', existingLpStake);
+        return;
+      }
+    }
+
+    console.log('💰 Pre-flight checks passed:', { 
+      walletBalance, 
+      stakingAmount: amount, 
+      isLP, 
+      selectedTier,
+      tokenType: isLP ? (selectedTier === 4 ? 'DTGC/URMOM LP' : 'DTGC/PLS LP') : 'DTGC',
+      existingPositions: stakedPositions.length
+    });
+
     try {
       setLoading(true);
       setModalType('start');
@@ -4400,10 +4434,38 @@ export default function App() {
       if (isLP) {
         // LP Staking - amount and lpType (0=Diamond/PLS, 1=Diamond+/URMOM)
         const lpType = selectedTier === 4 ? 1 : 0; // Diamond+ = 1, Diamond = 0
-        stakeTx = await stakingContract.stake(amountWei, lpType);
+        
+        // Estimate gas and add 50% buffer for safety
+        let gasLimit = 300000n;
+        try {
+          const gasEstimate = await stakingContract.stake.estimateGas(amountWei, lpType);
+          gasLimit = (gasEstimate * 150n) / 100n;
+          console.log('⛽ Gas estimate:', gasEstimate.toString(), '→ Using:', gasLimit.toString());
+        } catch (gasErr) {
+          console.error('⛽ Gas estimation failed - transaction will likely revert!');
+          let revertReason = gasErr.reason || gasErr.message?.slice(0, 60) || 'Unknown error';
+          showToast(`❌ Contract rejected: ${revertReason}`, 'error');
+          setLoading(false);
+          return;
+        }
+        
+        stakeTx = await stakingContract.stake(amountWei, lpType, { gasLimit });
       } else {
         // Regular Staking - amount and tier
-        stakeTx = await stakingContract.stake(amountWei, selectedTier);
+        let gasLimit = 250000n;
+        try {
+          const gasEstimate = await stakingContract.stake.estimateGas(amountWei, selectedTier);
+          gasLimit = (gasEstimate * 150n) / 100n;
+          console.log('⛽ Gas estimate:', gasEstimate.toString(), '→ Using:', gasLimit.toString());
+        } catch (gasErr) {
+          console.error('⛽ Gas estimation failed - transaction will likely revert!');
+          let revertReason = gasErr.reason || gasErr.message?.slice(0, 60) || 'Unknown error';
+          showToast(`❌ Contract rejected: ${revertReason}`, 'error');
+          setLoading(false);
+          return;
+        }
+        
+        stakeTx = await stakingContract.stake(amountWei, selectedTier, { gasLimit });
       }
 
       await stakeTx.wait();
