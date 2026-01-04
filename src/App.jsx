@@ -3576,26 +3576,56 @@ export default function App() {
   const fetchCryptoPrices = useCallback(async () => {
     try {
       // Fetch from CoinGecko for BTC/ETH
-      const cgRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd');
+      const cgRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,pulsechain&vs_currencies=usd');
       const cgData = await cgRes.json();
 
-      // Fetch PLS from DexScreener (PLS/DAI pair)
-      const plsRes = await fetch('https://api.dexscreener.com/latest/dex/pairs/pulsechain/0x6753560538eca67617a9ce605b2a2c5b3494b666');
-      const plsData = await plsRes.json();
-      const plsPair = plsData?.pair || plsData?.pairs?.[0];
+      // Fetch PLS from DexScreener - use WPLS/DAI pair (most liquid)
+      let plsPrice = 0.00003;
+      try {
+        const plsRes = await fetch('https://api.dexscreener.com/latest/dex/tokens/0xA1077a294dDE1B09bB078844df40758a5D0f9a27');
+        const plsData = await plsRes.json();
+        // Get best pair by liquidity
+        if (plsData?.pairs?.length > 0) {
+          const bestPair = plsData.pairs.sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];
+          plsPrice = parseFloat(bestPair?.priceUsd) || plsPrice;
+        }
+      } catch (e) {
+        console.warn('PLS price fetch failed:', e.message);
+      }
 
-      // Fetch PLSX from DexScreener
-      const plsxRes = await fetch('https://api.dexscreener.com/latest/dex/pairs/pulsechain/0x1b45b9148791d3a104184cd5dfe5ce57193a3ee9');
-      const plsxData = await plsxRes.json();
-      const plsxPair = plsxData?.pair || plsxData?.pairs?.[0];
+      // Fetch PLSX from DexScreener - search by token address
+      let plsxPrice = 0.00002;
+      try {
+        const plsxRes = await fetch('https://api.dexscreener.com/latest/dex/tokens/0x95B303987A60C71504D99Aa1b13B4DA07b0790ab');
+        const plsxData = await plsxRes.json();
+        // Get best pair by liquidity
+        if (plsxData?.pairs?.length > 0) {
+          const bestPair = plsxData.pairs.sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];
+          plsxPrice = parseFloat(bestPair?.priceUsd) || plsxPrice;
+        }
+      } catch (e) {
+        console.warn('PLSX price fetch failed:', e.message);
+      }
+
+      // Use CoinGecko PLS price as fallback/primary if available
+      if (cgData?.pulsechain?.usd) {
+        plsPrice = cgData.pulsechain.usd;
+      }
 
       setCryptoPrices({
         btc: cgData?.bitcoin?.usd || 42000,
         eth: cgData?.ethereum?.usd || 2200,
-        pls: parseFloat(plsPair?.priceUsd) || 0.00003,
-        plsx: parseFloat(plsxPair?.priceUsd) || 0.00002,
+        pls: plsPrice,
+        plsx: plsxPrice,
         loading: false,
         lastUpdated: new Date(),
+      });
+      
+      console.log('💰 Crypto prices updated:', { 
+        btc: cgData?.bitcoin?.usd, 
+        eth: cgData?.ethereum?.usd, 
+        pls: plsPrice, 
+        plsx: plsxPrice 
       });
     } catch (err) {
       console.warn('Failed to fetch crypto prices:', err.message);
