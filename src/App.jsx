@@ -3114,6 +3114,7 @@ export default function App() {
   const [stakeAmount, setStakeAmount] = useState('');
   const [stakeInputMode, setStakeInputMode] = useState('tokens'); // 'tokens' or 'currency'
   const [isLP, setIsLP] = useState(false);
+  const [gasSpeed, setGasSpeed] = useState('fast'); // 'normal', 'fast', 'urgent'
   
   // LP Staking Contract Rewards Remaining
   const [stakingRewardsRemaining, setStakingRewardsRemaining] = useState('0');
@@ -4481,6 +4482,20 @@ export default function App() {
       showToast('Step 2/2: Staking tokens...', 'info');
       const stakingContract = new ethers.Contract(stakingAddress, stakingABI, signer);
 
+      // Get current gas price and apply speed multiplier
+      const gasSpeedMultipliers = { normal: 100n, fast: 150n, urgent: 200n };
+      const multiplier = gasSpeedMultipliers[gasSpeed] || 150n;
+      let gasPrice;
+      try {
+        const feeData = await provider.getFeeData();
+        const baseGasPrice = feeData.gasPrice || 0n;
+        gasPrice = (baseGasPrice * multiplier) / 100n;
+        console.log(`⛽ Gas price: ${ethers.formatUnits(baseGasPrice, 'gwei')} gwei → ${gasSpeed} (${multiplier}%) → ${ethers.formatUnits(gasPrice, 'gwei')} gwei`);
+      } catch (e) {
+        console.warn('Could not get gas price, using default');
+        gasPrice = undefined;
+      }
+
       let stakeTx;
       if (isLP) {
         // LP Staking - amount and lpType (0=Diamond/PLS, 1=Diamond+/URMOM)
@@ -4500,7 +4515,10 @@ export default function App() {
           return;
         }
         
-        stakeTx = await stakingContract.stake(amountWei, lpType, { gasLimit });
+        const txOptions = { gasLimit };
+        if (gasPrice) txOptions.gasPrice = gasPrice;
+        
+        stakeTx = await stakingContract.stake(amountWei, lpType, txOptions);
       } else {
         // Regular Staking - amount and tier
         let gasLimit = 250000n;
@@ -4516,7 +4534,10 @@ export default function App() {
           return;
         }
         
-        stakeTx = await stakingContract.stake(amountWei, selectedTier, { gasLimit });
+        const txOptions = { gasLimit };
+        if (gasPrice) txOptions.gasPrice = gasPrice;
+        
+        stakeTx = await stakingContract.stake(amountWei, selectedTier, txOptions);
       }
 
       await stakeTx.wait();
@@ -6729,6 +6750,52 @@ export default function App() {
                       </div>
                     )}
                   </div>
+
+                  {/* Gas Speed Selector (Mainnet only) */}
+                  {!TESTNET_MODE && (
+                    <div style={{
+                      display: 'flex',
+                      gap: '8px',
+                      marginBottom: '16px',
+                      padding: '12px',
+                      background: 'rgba(0,0,0,0.2)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', marginRight: '8px' }}>
+                        ⛽ Speed:
+                      </div>
+                      {[
+                        { id: 'normal', label: '🐢 Normal', multiplier: '1x' },
+                        { id: 'fast', label: '🚀 Fast', multiplier: '1.5x' },
+                        { id: 'urgent', label: '⚡ Urgent', multiplier: '2x' },
+                      ].map(speed => (
+                        <button
+                          key={speed.id}
+                          onClick={() => setGasSpeed(speed.id)}
+                          style={{
+                            flex: 1,
+                            padding: '8px 4px',
+                            background: gasSpeed === speed.id 
+                              ? speed.id === 'urgent' ? 'rgba(255,87,34,0.3)' : speed.id === 'fast' ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.1)'
+                              : 'transparent',
+                            border: `1px solid ${gasSpeed === speed.id 
+                              ? speed.id === 'urgent' ? '#FF5722' : speed.id === 'fast' ? '#4CAF50' : 'rgba(255,255,255,0.3)'
+                              : 'rgba(255,255,255,0.1)'}`,
+                            borderRadius: '8px',
+                            color: gasSpeed === speed.id ? '#fff' : 'var(--text-muted)',
+                            fontSize: '0.7rem',
+                            fontWeight: gasSpeed === speed.id ? 600 : 400,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          <div>{speed.label}</div>
+                          <div style={{ fontSize: '0.6rem', opacity: 0.7 }}>{speed.multiplier} gas</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   <button
                     className="action-btn primary"
