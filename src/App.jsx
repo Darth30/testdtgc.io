@@ -3185,6 +3185,77 @@ export default function App() {
     lastUpdated: null,
   });
 
+  // Fetch live metal prices from free API
+  const fetchMetalPrices = useCallback(async () => {
+    setMetalPrices(prev => ({ ...prev, loading: true }));
+    
+    try {
+      // Use MetalPriceAPI free tier (or fallback to multiple sources)
+      // Primary: Fetch from metals.live (free, no API key needed)
+      const response = await fetch('https://api.metals.live/v1/spot');
+      const data = await response.json();
+      
+      // metals.live returns array: [{gold: price}, {silver: price}, {platinum: price}, {palladium: price}]
+      // Or object with metal prices
+      let goldPrice = 2650, silverPrice = 31.50, copperPrice = 4.25;
+      
+      if (Array.isArray(data)) {
+        // Format: [{gold: 2650.00}, {silver: 31.50}, ...]
+        data.forEach(item => {
+          if (item.gold) goldPrice = parseFloat(item.gold);
+          if (item.silver) silverPrice = parseFloat(item.silver);
+          if (item.copper) copperPrice = parseFloat(item.copper);
+        });
+      } else if (data.gold || data.silver) {
+        // Format: {gold: 2650.00, silver: 31.50, ...}
+        goldPrice = parseFloat(data.gold) || goldPrice;
+        silverPrice = parseFloat(data.silver) || silverPrice;
+        copperPrice = parseFloat(data.copper) || copperPrice;
+      }
+      
+      setMetalPrices({
+        gold: goldPrice,
+        silver: silverPrice,
+        copper: copperPrice,
+        loading: false,
+        lastUpdated: new Date(),
+      });
+      
+      console.log('🥇 Metal prices updated:', { gold: goldPrice, silver: silverPrice, copper: copperPrice });
+    } catch (err) {
+      console.warn('Primary metals API failed, trying backup...', err.message);
+      
+      // Backup: Try alternative free API
+      try {
+        const backupRes = await fetch('https://data-asg.goldprice.org/dbXRates/USD');
+        const backupData = await backupRes.json();
+        
+        // goldprice.org format: {items: [{xauPrice: gold, xagPrice: silver}]}
+        if (backupData?.items?.[0]) {
+          const item = backupData.items[0];
+          setMetalPrices({
+            gold: parseFloat(item.xauPrice) || 2650,
+            silver: parseFloat(item.xagPrice) || 31.50,
+            copper: 4.25, // goldprice.org doesn't have copper
+            loading: false,
+            lastUpdated: new Date(),
+          });
+          console.log('🥇 Metal prices updated (backup):', { gold: item.xauPrice, silver: item.xagPrice });
+        }
+      } catch (backupErr) {
+        console.warn('Backup metals API also failed:', backupErr.message);
+        setMetalPrices(prev => ({ ...prev, loading: false }));
+      }
+    }
+  }, []);
+
+  // Fetch metal prices on mount and every 5 minutes
+  useEffect(() => {
+    fetchMetalPrices();
+    const interval = setInterval(fetchMetalPrices, 300000); // Refresh every 5 min
+    return () => clearInterval(interval);
+  }, [fetchMetalPrices]);
+
   const [position, setPosition] = useState(null);
   const [lpPosition, setLpPosition] = useState(null);
   const [stakedPositions, setStakedPositions] = useState([]);
