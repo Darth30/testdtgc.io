@@ -444,7 +444,7 @@ const VIDEOS = {
 const TESTNET_MODE = true; // TESTNET - FAKE MONEY ONLY!
 
 // Password Protection
-const SITE_PASSWORD = 'GOLD$tack91!';
+const SITE_PASSWORD = 'TESTgold2025!';
 const PASSWORD_ENABLED = false; // TESTNET - No password!
 
 // IP Logging Configuration
